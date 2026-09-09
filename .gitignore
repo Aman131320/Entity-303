@@ -1,0 +1,8 @@
+node_modules/
+.env
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+__pycache__/

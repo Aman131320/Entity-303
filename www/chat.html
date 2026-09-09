@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Entity AI - Chat</title>
+    <style>
+        :root {
+            --primary: #4285F4;
+            --primary-dark: #2b61c4;
+            --bg-dark: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-hover: #2d2d2d;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* --- Main Header --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: var(--bg-panel);
+            box-shadow: 0 2px 15px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        .icon-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* --- Left Sidebar (History & Profile) --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0; left: -300px;
+            width: 280px; height: 100%;
+            background-color: var(--bg-panel);
+            z-index: 21;
+            transition: left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.7);
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 10px 10px 15px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            transition: background 0.2s;
+        }
+
+        .history-item:active, .history-item.active {
+            background-color: var(--bg-hover);
+            color: var(--text-main);
+        }
+
+        .history-title {
+            flex: 1;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            padding-right: 10px;
+        }
+
+        .history-menu-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Bottom Profile Section */
+        .profile-section {
+            padding: 15px;
+            border-top: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #1a1a1a;
+        }
+
+        .profile-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .profile-pic {
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            border: 2px solid var(--primary);
+            object-fit: cover;
+        }
+
+        .user-name {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* --- Action Sheet (Bottom Menu) --- */
+        .action-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 30;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .action-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .action-sheet {
+            position: fixed;
+            bottom: -150px; left: 0;
+            width: 100%;
+            background-color: var(--bg-panel);
+            z-index: 31;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
+            transition: bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            padding: 10px 0 20px 0;
+        }
+        .action-sheet.active {
+            bottom: 0;
+        }
+        .action-item {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 16px;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+        .action-item:active {
+            background-color: var(--bg-hover);
+        }
+        .action-item.danger {
+            color: #ff4c4c;
+        }
+
+        /* --- Chat Area --- */
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .message-bubble {
+            font-size: 15px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            animation: slideUpFade 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        @keyframes slideUpFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-bubble {
+            max-width: 82%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #ffffff;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-bubble {
+            max-width: 95%;
+            background-color: transparent;
+            color: var(--text-main);
+            align-self: flex-start;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .bot-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .bot-text {
+            flex: 1;
+            padding-top: 6px;
+        }
+
+        /* --- Dynamic Typing Indicator --- */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding-top: 14px;
+        }
+
+        .typing-dot {
+            width: 7px;
+            height: 7px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* --- Input Area --- */
+        .input-area {
+            display: flex;
+            padding: 15px;
+            background-color: var(--bg-panel);
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.6);
+            gap: 10px;
+            align-items: center;
+        }
+
+        .mic-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .mic-btn.listening {
+            color: #ff4c4c;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background-color: #2d2d2d;
+            border: none;
+            color: var(--text-main);
+            padding: 14px 18px;
+            border-radius: 25px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            background-color: #383838;
+        }
+
+        button.send-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+            color: white;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.1s;
+        }
+
+        button.send-btn:active {
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button class="icon-btn" onclick="toggleSidebar()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <div class="header-title">Entity AI</div>
+        <button class="icon-btn" onclick="startNewChat()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+        </button>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            Recent Chats
+            <button class="icon-btn" onclick="toggleSidebar()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        
+        <div class="history-list" id="historyList"></div>
+
+        <div class="profile-section">
+            <div class="profile-info">
+                <img id="profileImage" class="profile-pic" src="" alt="Profile" style="display: none;" referrerpolicy="no-referrer">
+                <span class="user-name" id="userGreeting">User</span>
+            </div>
+            <button class="icon-btn" onclick="logout()" style="color: #ff4c4c;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Action Sheet Overlay for Share/Delete -->
+    <div class="action-overlay" id="actionOverlay" onclick="closeActionMenu()"></div>
+    <div class="action-sheet" id="actionSheet">
+        <div class="action-item" onclick="shareSelectedSession()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            Share Chat
+        </div>
+        <div class="action-item danger" onclick="deleteSelectedSession()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            Delete Chat
+        </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-container" id="chatContainer"></div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+        <button class="mic-btn" id="micBtn" onclick="toggleDictation()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+        </button>
+        
+        <input type="text" id="messageInput" placeholder="Message Entity AI..." onkeypress="handleKeyPress(event)">
+        
+        <button class="send-btn" onclick="sendMessage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="white"/>
+            </svg>
+        </button>
+    </div>
+
+    <script src="capacitor.js"></script>
+
+    <script>
+        let allSessions = []; 
+        let currentSessionId = null;
+        let userStorageKey = 'entityAllSessions'; 
+        let sessionToModify = null;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            recognition.onstart = function() {
+                document.getElementById('micBtn').classList.add('listening');
+                document.getElementById('messageInput').placeholder = "Listening...";
+            };
+            
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('messageInput').value = transcript;
+                setTimeout(sendMessage, 500); 
+            };
+            
+            recognition.onend = function() {
+                document.getElementById('micBtn').classList.remove('listening');
+                document.getElementById('messageInput').placeholder = "Message Entity AI...";
+            };
+        }
+
+        window.onload = function() {
+            const userData = localStorage.getItem('entityUser');
+            if (!userData) {
+                window.location.replace('index.html');
+                return;
+            }
+
+            const user = JSON.parse(userData);
+            userStorageKey = 'entityAllSessions_' + user.email;
+
+            document.getElementById('userGreeting').innerText = user.givenName || "User";
+            if (user.imageUrl) {
+                const imgElement = document.getElementById('profileImage');
+                imgElement.src = user.imageUrl;
+                imgElement.style.display = 'block';
+            }
+
+            try {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.getVoices(); 
+                }
+            } catch (error) {
+                console.log("Voice synthesis disabled on this device.");
+            }
+
+            loadAllSessions();
+        };
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+            updateHistoryListUI();
+        }
+
+        function loadAllSessions() {
+            const savedData = localStorage.getItem(userStorageKey);
+            if (savedData) {
+                allSessions = JSON.parse(savedData);
+                if (allSessions.length > 0) {
+                    currentSessionId = allSessions[0].id;
+                    renderSession(currentSessionId);
+                } else {
+                    startNewChat();
+                }
+            } else {
+                startNewChat();
+            }
+        }
+
+        function saveAllSessions() {
+            localStorage.setItem(userStorageKey, JSON.stringify(allSessions));
+            updateHistoryListUI();
+        }
+
+        function startNewChat() {
+            currentSessionId = Date.now().toString();
+            const welcomeText = "Hello! I am Entity AI. How can I help you today?";
+            
+            const newSession = {
+                id: currentSessionId,
+                title: "New Chat",
+                messages: [{ role: 'bot', text: welcomeText }]
+            };
+            
+            allSessions.unshift(newSession);
+            saveAllSessions();
+            renderSession(currentSessionId);
+            
+            if (document.getElementById('sidebar').classList.contains('active')) {
+                toggleSidebar();
+            }
+        }
+
+        function loadSpecificSession(id) {
+            currentSessionId = id;
+            renderSession(id);
+            toggleSidebar();
+        }
+
+        function renderSession(id) {
+            const container = document.getElementById('chatContainer');
+            container.innerHTML = ''; 
+            
+            const session = allSessions.find(s => s.id === id);
+            if (session) {
+                session.messages.forEach(msg => appendMessageToUI(msg.text, msg.role));
+            }
+        }
+
+        function updateHistoryListUI() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            
+            allSessions.forEach(session => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                if (session.id === currentSessionId) item.classList.add('active');
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'history-title';
+                titleSpan.innerText = "💬 " + session.title;
+                titleSpan.onclick = () => loadSpecificSession(session.id);
+
+                const menuBtn = document.createElement('button');
+                menuBtn.className = 'history-menu-btn';
+                menuBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`;
+                
+                menuBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openActionMenu(session.id);
+                };
+                
+                item.appendChild(titleSpan);
+                item.appendChild(menuBtn);
+                list.appendChild(item);
+            });
+        }
+
+        function openActionMenu(id) {
+            sessionToModify = id;
+            document.getElementById('actionOverlay').classList.add('active');
+            document.getElementById('actionSheet').classList.add('active');
+        }
+
+        function closeActionMenu() {
+            document.getElementById('actionOverlay').classList.remove('active');
+            document.getElementById('actionSheet').classList.remove('active');
+            sessionToModify = null;
+        }
+
+        function deleteSelectedSession() {
+            if (!sessionToModify) return;
+            allSessions = allSessions.filter(s => s.id !== sessionToModify);
+            saveAllSessions();
+            closeActionMenu();
+            if (currentSessionId === sessionToModify) {
+                if (allSessions.length > 0) {
+                    currentSessionId = allSessions[0].id;
+                    renderSession(currentSessionId);
+                } else {
+                    startNewChat();
+                }
+            }
+        }
+
+        async function shareSelectedSession() {
+            if (!sessionToModify) return;
+            const session = allSessions.find(s => s.id === sessionToModify);
+            if (!session) return;
+            let shareText = `Entity AI Chat: ${session.title}\n\n`;
+            session.messages.forEach(msg => {
+                const speaker = msg.role === 'user' ? 'You' : 'Entity AI';
+                shareText += `${speaker}: ${msg.text}\n\n`;
+            });
+            closeActionMenu();
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Entity AI Chat',
+                        text: shareText
+                    });
+                } catch (err) {
+                    console.log("Share cancelled or failed:", err);
+                }
+            } else {
+                navigator.clipboard.writeText(shareText);
+                alert("Chat copied to clipboard!");
+            }
+        }
+
+        async function toggleDictation() {
+            if (!recognition) {
+                alert("Speech recognition is not supported on this device.");
+                return;
+            }
+            if (document.getElementById('micBtn').classList.contains('listening')) {
+                recognition.stop();
+                return;
+            }
+            try {
+                recognition.start();
+            } catch (err) {
+                alert("Microphone is currently unavailable or blocked by the system.");
+            }
+        }
+
+        function speakAIResponse(text) {
+            if (!('speechSynthesis' in window)) return;
+            const synth = window.speechSynthesis;
+            synth.cancel(); 
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = synth.getVoices();
+            const targetVoice = voices.find(v => v.lang.includes('en-IN') && v.name.toLowerCase().includes('male')) 
+                             || voices.find(v => v.lang.includes('en-IN')) 
+                             || voices.find(v => v.name.toLowerCase().includes('male')) 
+                             || voices[0];
+                             
+            if (targetVoice) utterance.voice = targetVoice;
+            utterance.pitch = 0.6; 
+            utterance.rate = 1.0;  
+            synth.speak(utterance);
+        }
+
+        function appendMessageToUI(text, role) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            if (role === 'user') {
+                messageDiv.className = `message-bubble user-bubble`;
+                messageDiv.innerText = text;
+            } else {
+                messageDiv.className = `message-bubble bot-bubble`;
+                messageDiv.innerHTML = `
+                    <div class="bot-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+                    </div>
+                    <div class="bot-text">${text}</div>
+                `;
+            }
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const chatContainer = document.getElementById('chatContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message-bubble bot-bubble';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="bot-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+                </div>
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const inputField = document.getElementById('messageInput');
+            const userText = inputField.value.trim();
+            if (!userText) return;
+
+            const currentSessionIndex = allSessions.findIndex(s => s.id === currentSessionId);
+            if (currentSessionIndex === -1) return;
+
+            if (allSessions[currentSessionIndex].messages.length === 1) {
+                allSessions[currentSessionIndex].title = userText;
+            }
+
+            appendMessageToUI(userText, 'user');
+            allSessions[currentSessionIndex].messages.push({ role: 'user', text: userText });
+            saveAllSessions();
+            inputField.value = '';
+
+            showTypingIndicator();
+
+            try {
+                // Fetch using your active Pinggy Link!
+                const response = await fetch('https://nanmo-49-36-65-221.free.pinggy.net/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: userText })
+                });
+
+                const data = await response.json();
+                
+                const indicator = document.getElementById('typingIndicator');
+                if (indicator) indicator.remove();
+
+                const aiReply = data.reply || "No reply generated.";
+                appendMessageToUI(aiReply, 'bot');
+                allSessions[currentSessionIndex].messages.push({ role: 'bot', text: aiReply });
+                saveAllSessions();
+                
+                speakAIResponse(aiReply);
+
+            } catch (error) {
+                console.error("API Error:", error);
+                const indicator = document.getElementById('typingIndicator');
+                if (indicator) indicator.remove();
+                
+                const errorMsg = "Connection failed. Please check your tunnel link and server.";
+                appendMessageToUI(errorMsg, 'bot');
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+
+        async function logout() {
+            try {
+                await Capacitor.Plugins.GoogleAuth.initialize({
+                    clientId: '752902709629-n38560sohmn3b9tctf6cjg21sef3dnbe.apps.googleusercontent.com',
+                    scopes: ['profile', 'email'],
+                    grantOfflineAccess: true,
+                });
+                await Capacitor.Plugins.GoogleAuth.signOut();
+            } catch (error) {
+                console.log("Native sign out failed or skipped");
+            }
+            localStorage.removeItem('entityUser');
+            window.location.replace('index.html');
+        }
+    </script>
+</body>
+</html>

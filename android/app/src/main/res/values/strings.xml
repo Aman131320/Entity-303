@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Entity AI</string>
+    <string name="title_activity_main">Entity AI</string>
+    <string name="package_name">com.entitygroups.ai</string>
+    <string name="custom_url_scheme">com.entitygroups.ai</string>
+    <string name="server_client_id">752902709629-n38560sohmn3b9tctf6cjg21sef3dnbe.apps.googleusercontent.com</string>
+</resources>
