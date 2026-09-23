@@ -2,12 +2,5 @@
   "appId": "com.entityai.app",
   "appName": "Entity AI",
   "webDir": "www",
-  "bundledWebRuntime": false,
-  "plugins": {
-    "GoogleAuth": {
-      "scopes": ["profile", "email"],
-      "serverClientId": "752902709629-n38560sohmn3b9tctf6cjg21sef3dnbe.apps.googleusercontent.com",
-      "forceCodeForRefreshToken": true
-    }
-  }
+  "bundledWebRuntime": false
 }
