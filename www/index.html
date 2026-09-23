@@ -1,135 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <!-- Ensures the app looks like a native mobile app and prevents zooming -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Entity AI Chat</title>
-    
-    <style>
-        /* Dark mode styling for Entity AI */
-        body {
-            background-color: #121212;
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        
-        .chat-container {
-            text-align: center;
-            padding: 30px;
-            border-radius: 12px;
-            background-color: #1e1e1e;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            width: 85%;
-            max-width: 400px;
-        }
-        
-        h1 {
-            font-size: 26px;
-            margin-bottom: 5px;
-            letter-spacing: 1px;
-        }
-        
-        p.subtitle {
-            color: #aaaaaa;
-            font-size: 14px;
-            margin-bottom: 35px;
-        }
-        
-        button {
-            background-color: #ffffff;
-            color: #3c4043;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            gap: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: background-color 0.2s;
-        }
-        
-        button:active {
-            background-color: #eeeeee;
-        }
-        
-        footer {
-            margin-top: 40px;
-            font-size: 12px;
-            color: #666666;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="chat-container">
-        <h1>Entity AI</h1>
-        <p class="subtitle">Secure Native Login</p>
-        
-        <!-- Google Sign-in Button -->
-        <button onclick="triggerGoogleLogin()">
-            <!-- Official Google "G" SVG Logo -->
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Sign in with Google
-        </button>
-        
-        <footer>&copy; 2026 Entity Groups by Damar Aman</footer>
-    </div>
-
-    <!-- 
-      Capacitor automatically injects capacitor.js at runtime. 
-      Including it here guarantees native bridge initialization. 
-    -->
-    <script src="capacitor.js"></script>
-    
-    <script>
-        // AUTO-LOGIN CHECK: If the user is already saved, skip the login screen
-        if (localStorage.getItem('entityUser')) {
-            window.location.href = 'chat.html';
-        }
-
-        async function triggerGoogleLogin() {
-            try {
-                // Initialize the plugin with your correct WEB Client ID
-                await Capacitor.Plugins.GoogleAuth.initialize({
-                    clientId: '752902709629-n38560sohmn3b9tctf6cjg21sef3dnbe.apps.googleusercontent.com',
-                    scopes: ['profile', 'email'],
-                    grantOfflineAccess: true,
-                });
-
-                // Trigger the native Android bottom-sheet login
-                const user = await Capacitor.Plugins.GoogleAuth.signIn();
-                
-                // 1. Save the user data to local storage so it persists
-                localStorage.setItem('entityUser', JSON.stringify(user));
-                
-                // 2. Redirect to your main application page
-                // Note: Ensure you actually have a file named chat.html in your webDir!
-                window.location.href = 'chat.html'; 
-                
-            } catch (error) {
-                console.error('Google sign-in error:',error);
-                const message=String(error?.message || error?.code || '').toLowerCase();
-                if (message.includes('cancel') || message.includes('dismiss') || message.includes('canceled')) return;
-                alert('Google sign-in failed. Please try again.');
-            }
-        }
-    </script>
-</body>
-</html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Entity AI</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#0b0d12;color:#fff;font-family:Inter,Segoe UI,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}.login-card{width:min(430px,100%);padding:30px;border:1px solid #242936;border-radius:24px;background:linear-gradient(180deg,#171a22,#101219);box-shadow:0 20px 60px rgba(0,0,0,.45)}.logo{width:68px;height:68px;border-radius:20px;display:grid;place-items:center;margin:0 auto 18px;background:linear-gradient(135deg,#4285f4,#6d5dfc);font-size:30px;font-weight:800}.login-card h1{text-align:center;margin:0;font-size:30px}.subtitle{text-align:center;color:#9aa3b2;margin:8px 0 28px;font-size:14px}.login-btn{width:100%;height:52px;border:0;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:15px;font-weight:600;cursor:pointer}.google-btn{background:#fff;color:#222}.offline-btn{margin-top:12px;background:#222733;color:#fff;border:1px solid #343b4a}.offline-box{display:none;margin-top:14px}.offline-box.active{display:block}.offline-box input{width:100%;height:48px;border:1px solid #343b4a;background:#0d1016;color:#fff;border-radius:12px;padding:0 14px;font-size:15px;outline:none}.small{font-size:12px;color:#7f8998;text-align:center;margin-top:18px;line-height:1.5}footer{text-align:center;color:#5f6877;font-size:11px;margin-top:22px}
+</style></head><body><div class="login-card"><div class="logo">E</div><h1>Entity AI</h1><div class="subtitle">Your AI assistant</div>
+<button class="login-btn google-btn" onclick="triggerGoogleLogin()">Sign in with Google</button>
+<button class="login-btn offline-btn" onclick="toggleOffline()">Continue offline</button>
+<div class="offline-box" id="offlineBox"><input id="offlineName" maxlength="40" placeholder="Enter your name"><button class="login-btn offline-btn" style="margin-top:10px" onclick="offlineLogin()">Continue</button></div>
+<div class="small">Offline mode keeps your profile and chat history on this device. AI replies and image generation need internet.</div><footer>Entity AI • Created by Damar Aman</footer></div>
+<script src="capacitor.js"></script><script>
+if(localStorage.getItem('entityUser')) location.replace('chat.html');
+async function triggerGoogleLogin(){
+ try{
+  const plugin=window.Capacitor?.Plugins?.GoogleSignIn;
+  if(!plugin) throw new Error('Google sign-in plugin unavailable');
+  await plugin.initialize({clientId:'752902709629-n38560sohmn3b9tctf6cjg21sef3dnbe.apps.googleusercontent.com',scopes:['profile','email']});
+  const user=await plugin.signIn();
+  localStorage.setItem('entityUser',JSON.stringify({name:user?.displayName||user?.givenName||'User',givenName:user?.givenName||user?.displayName||'User',email:user?.email||'',imageUrl:user?.photoUrl||'',offline:false}));
+  location.replace('chat.html');
+ }catch(error){console.error(error);const m=String(error?.message||error?.code||'').toLowerCase();if(!m.includes('cancel')&&!m.includes('dismiss'))alert('Google sign-in failed. You can use Continue offline.');}
+}
+function toggleOffline(){document.getElementById('offlineBox').classList.toggle('active');document.getElementById('offlineName').focus()}
+function offlineLogin(){const name=document.getElementById('offlineName').value.trim()||'User';localStorage.setItem('entityUser',JSON.stringify({name,givenName:name,email:'offline@entity.local',offline:true}));location.replace('chat.html')}
+</script></body></html>
