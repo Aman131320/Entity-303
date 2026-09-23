@@ -16,7 +16,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "@capgo/capacitor-speech-recognition": "^8.3.2"
+    "@capgo/capacitor-speech-recognition": "^8.3.2",
+    "@capawesome/capacitor-google-sign-in": "^0.1.4"
   },
   "keywords": [],
   "author": "",
