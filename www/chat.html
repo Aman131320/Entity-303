@@ -359,7 +359,9 @@
             justify-content: center;
         }
 
-        .attach-btn:active, .mic-btn:active { transform: scale(0.92); }
+        .create-image-btn{width:40px;min-width:40px;height:40px;flex:0 0 40px;background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+        .create-image-btn.active{color:var(--primary)}
+        .create-image-btn:active,.attach-btn:active,.mic-btn:active{transform:scale(.92)}
         .attachment-preview { display:none; align-items:center; gap:8px; padding:8px 12px; background:#252525; border-top:1px solid #333; }
         .attachment-preview.active { display:flex; }
         .attachment-preview img { width:46px; height:46px; object-fit:cover; border-radius:8px; }
@@ -487,6 +489,11 @@
             </svg>
         </button>
 
+        <button class="create-image-btn" onclick="toggleImageMode()" aria-label="Create image" title="Create image">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v18M3 12h18"></path><path d="M19 5l-2 2M5 19l2-2M19 19l-2-2M5 5l2 2"></path>
+            </svg>
+        </button>
         <input type="text" id="messageInput" placeholder="Message Entity AI..." onkeypress="handleKeyPress(event)">
 
         <button class="send-btn" onclick="sendMessage()" aria-label="Send message">
@@ -513,6 +520,7 @@
         let nativeFinalized = false;
         let nativeListening = false;
         let selectedImage = null;
+        let imageMode = false;
 
         if (BrowserSpeechRecognition) {
             recognition = new BrowserSpeechRecognition();
@@ -575,266 +583,60 @@
             try {
                 if (nativeSpeech) {
                     if (nativeSessionActive) {
-                        try { await nativeSpeech.stop(); }
-                        catch (_) { try { if (nativeSpeech.forceStop) await nativeSpeech.forceStop({timeout:1200}); } catch (_) {} }
+                        try { await nativeSpeech.stop(); } catch (_) {}
                         await finishNativeSpeech();
                         return;
                     }
-
                     const permission = await nativeSpeech.requestPermissions();
                     if (permission?.speechRecognition === 'denied') {
                         alert('Please allow microphone permission for Entity AI in Android settings.');
                         return;
                     }
                     const availability = await nativeSpeech.available();
-                    if (!availability?.available) throw new Error('Native speech recognition is not available.');
-
+                    if (!availability?.available) throw new Error('Speech recognition is not available on this device.');
                     await cleanupNativeListeners();
                     nativeTranscript = '';
                     nativeFinalized = false;
                     nativeSessionActive = true;
                     nativeListening = true;
                     setMicState(true);
-
                     nativeListeners.push(await nativeSpeech.addListener('partialResults', event => {
                         const matches = event?.matches || [];
-                        const nextText = event?.accumulatedText || event?.accumulated || matches[0] || '';
+                        const nextText = matches[0] || event?.accumulatedText || '';
                         if (nextText) {
                             nativeTranscript = nextText;
                             document.getElementById('messageInput').value = nextText;
                         }
                     }));
-
                     nativeListeners.push(await nativeSpeech.addListener('listeningState', event => {
                         if ((event?.state === 'stopped' || event?.status === 'stopped') && nativeSessionActive) finishNativeSpeech();
                     }));
-
                     nativeListeners.push(await nativeSpeech.addListener('error', event => {
                         console.log('Native speech error:', event);
                         if (nativeSessionActive) finishNativeSpeech();
                     }));
-
-                    let useOnDevice = false;
-                    try {
-                        const onDevice = await nativeSpeech.isOnDeviceRecognitionAvailable({language:'en-IN'});
-                        useOnDevice = !!onDevice?.available;
-                    } catch (_) {}
-
-                    try {
-                        await nativeSpeech.start({
-                            language:'en-IN',
-                            maxResults:3,
-                            partialResults:true,
-                            popup:false,
-                            useOnDeviceRecognition:useOnDevice
-                        });
-                    } catch (startError) {
-                        await finishNativeSpeech();
-                        throw startError;
-                    }
+                    await nativeSpeech.start({
+                        language:'en-IN',
+                        maxResults:3,
+                        partialResults:true,
+                        popup:true,
+                        useOnDeviceRecognition:false
+                    });
                     return;
                 }
-
                 if (recognition) {
                     if (document.getElementById('micBtn').classList.contains('listening')) recognition.stop();
                     else recognition.start();
                     return;
                 }
-
                 alert('Speech recognition is not available on this device.');
             } catch (error) {
-                console.error('Microphone error:', error);
-                nativeListening = false;
-                nativeSessionActive = false;
+                console.error('Microphone error:',error);
+                nativeListening=false;
+                nativeSessionActive=false;
                 setMicState(false);
+                await cleanupNativeListeners();
                 alert('Microphone could not start. Please allow microphone permission and try again.');
-            }
-        }
-
-        window.onload = function() {
-            const userData = localStorage.getItem('entityUser');
-            if (!userData) {
-                window.location.replace('index.html');
-                return;
-            }
-
-            const user = JSON.parse(userData);
-            userStorageKey = 'entityAllSessions_' + user.email;
-
-            document.getElementById('userGreeting').innerText = user.givenName || "User";
-            if (user.imageUrl) {
-                const imgElement = document.getElementById('profileImage');
-                imgElement.src = user.imageUrl;
-                imgElement.style.display = 'block';
-            }
-
-            try {
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.getVoices(); 
-                }
-            } catch (error) {
-                console.log("Voice synthesis disabled on this device.");
-            }
-
-            loadAllSessions();
-            setupSpeechRecognition();
-        };
-
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('sidebarOverlay').classList.toggle('active');
-            updateHistoryListUI();
-        }
-
-        function loadAllSessions() {
-            const savedData = localStorage.getItem(userStorageKey);
-            if (savedData) {
-                allSessions = JSON.parse(savedData);
-                if (allSessions.length > 0) {
-                    currentSessionId = allSessions[0].id;
-                    renderSession(currentSessionId);
-                } else {
-                    startNewChat();
-                }
-            } else {
-                startNewChat();
-            }
-        }
-
-        function saveAllSessions() {
-            localStorage.setItem(userStorageKey, JSON.stringify(allSessions));
-            updateHistoryListUI();
-        }
-
-        function startNewChat() {
-            currentSessionId = Date.now().toString();
-            const welcomeText = "Hello! I am Entity AI. How can I help you today?";
-            
-            const newSession = {
-                id: currentSessionId,
-                title: "New Chat",
-                messages: [{ role: 'bot', text: welcomeText }]
-            };
-            
-            allSessions.unshift(newSession);
-            saveAllSessions();
-            renderSession(currentSessionId);
-            
-            if (document.getElementById('sidebar').classList.contains('active')) {
-                toggleSidebar();
-            }
-        }
-
-        function loadSpecificSession(id) {
-            currentSessionId = id;
-            renderSession(id);
-            toggleSidebar();
-        }
-
-        function renderSession(id) {
-            const container = document.getElementById('chatContainer');
-            container.innerHTML = ''; 
-            
-            const session = allSessions.find(s => s.id === id);
-            if (session) {
-                session.messages.forEach(msg => appendMessageToUI(msg.text, msg.role));
-            }
-        }
-
-        function updateHistoryListUI() {
-            const list = document.getElementById('historyList');
-            list.innerHTML = '';
-            
-            allSessions.forEach(session => {
-                const item = document.createElement('div');
-                item.className = 'history-item';
-                if (session.id === currentSessionId) item.classList.add('active');
-                
-                const titleSpan = document.createElement('span');
-                titleSpan.className = 'history-title';
-                titleSpan.innerText = "💬 " + session.title;
-                titleSpan.onclick = () => loadSpecificSession(session.id);
-
-                const menuBtn = document.createElement('button');
-                menuBtn.className = 'history-menu-btn';
-                menuBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`;
-                
-                menuBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    openActionMenu(session.id);
-                };
-                
-                item.appendChild(titleSpan);
-                item.appendChild(menuBtn);
-                list.appendChild(item);
-            });
-        }
-
-        function openActionMenu(id) {
-            sessionToModify = id;
-            document.getElementById('actionOverlay').classList.add('active');
-            document.getElementById('actionSheet').classList.add('active');
-        }
-
-        function closeActionMenu() {
-            document.getElementById('actionOverlay').classList.remove('active');
-            document.getElementById('actionSheet').classList.remove('active');
-            sessionToModify = null;
-        }
-
-        function deleteSelectedSession() {
-            if (!sessionToModify) return;
-            allSessions = allSessions.filter(s => s.id !== sessionToModify);
-            saveAllSessions();
-            closeActionMenu();
-            if (currentSessionId === sessionToModify) {
-                if (allSessions.length > 0) {
-                    currentSessionId = allSessions[0].id;
-                    renderSession(currentSessionId);
-                } else {
-                    startNewChat();
-                }
-            }
-        }
-
-        async function shareSelectedSession() {
-            if (!sessionToModify) return;
-            const session = allSessions.find(s => s.id === sessionToModify);
-            if (!session) return;
-            let shareText = `Entity AI Chat: ${session.title}\n\n`;
-            session.messages.forEach(msg => {
-                const speaker = msg.role === 'user' ? 'You' : 'Entity AI';
-                shareText += `${speaker}: ${msg.text}\n\n`;
-            });
-            closeActionMenu();
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'Entity AI Chat',
-                        text: shareText
-                    });
-                } catch (err) {
-                    console.log("Share cancelled or failed:", err);
-                }
-            } else {
-                navigator.clipboard.writeText(shareText);
-                alert("Chat copied to clipboard!");
-            }
-        }
-
-        async function toggleDictation() {
-            if (!recognition) {
-                alert("Speech recognition is not supported on this device.");
-                return;
-            }
-            if (document.getElementById('micBtn').classList.contains('listening')) {
-                recognition.stop();
-                return;
-            }
-            try {
-                recognition.start();
-            } catch (err) {
-                alert("Microphone is currently unavailable or blocked by the system.");
             }
         }
 
@@ -920,45 +722,99 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        async function sendMessage() {
-            const inputField = document.getElementById('messageInput');
-            const userText = inputField.value.trim();
-            if (!userText && !selectedImage) return;
-            const currentSessionIndex = allSessions.findIndex(s => s.id === currentSessionId);
-            if (currentSessionIndex === -1) return;
+        function toggleImageMode() {
+            imageMode=!imageMode;
+            document.querySelector('.create-image-btn')?.classList.toggle('active',imageMode);
+            const input=document.getElementById('messageInput');
+            input.placeholder=imageMode?'Describe the image you want...':'Message Entity AI...';
+            if(imageMode) input.focus();
+        }
 
-            const imageForRequest = selectedImage;
-            if (allSessions[currentSessionIndex].messages.length === 1) {
-                allSessions[currentSessionIndex].title = userText || 'Image chat';
+        async function generateImage(prompt) {
+            const response=await fetch('https://entity-303.onrender.com/api/generate-image',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({prompt})
+            });
+            const data=await response.json();
+            if(!response.ok) throw new Error(data?.error||data?.details||'Image generation failed');
+            return data;
+        }
+
+        function appendGeneratedImageToUI(data) {
+            const chatContainer=document.getElementById('chatContainer');
+            const messageDiv=document.createElement('div');
+            messageDiv.className='message-bubble bot-bubble';
+            const icon=document.createElement('div');
+            icon.className='bot-icon';
+            icon.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>';
+            const body=document.createElement('div');
+            body.className='bot-text';
+            const label=document.createElement('div');
+            label.textContent='Generated image';
+            const img=document.createElement('img');
+            img.src='data:'+(data.mimeType||'image/png')+';base64,'+data.image;
+            img.alt='Generated image';
+            img.style.cssText='display:block;max-width:100%;border-radius:14px;margin-top:8px';
+            body.append(label,img);
+            messageDiv.append(icon,body);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop=chatContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const inputField=document.getElementById('messageInput');
+            const userText=inputField.value.trim();
+            if(!userText&&!selectedImage) return;
+
+            if(imageMode&&!selectedImage){
+                imageMode=false;
+                document.querySelector('.create-image-btn')?.classList.remove('active');
+                inputField.value='';
+                inputField.placeholder='Message Entity AI...';
+                appendMessageToUI(userText,'user');
+                showTypingIndicator();
+                try{
+                    const data=await generateImage(userText);
+                    document.getElementById('typingIndicator')?.remove();
+                    appendGeneratedImageToUI(data);
+                }catch(error){
+                    console.error('Image generation error:',error);
+                    document.getElementById('typingIndicator')?.remove();
+                    appendMessageToUI('Image creation failed. Please try again.','bot');
+                }
+                return;
             }
-            appendMessageToUI(userText, 'user', imageForRequest);
-            allSessions[currentSessionIndex].messages.push({role:'user',text:userText || '[Image attached]'});
+
+            const currentSessionIndex=allSessions.findIndex(s=>s.id===currentSessionId);
+            if(currentSessionIndex===-1) return;
+            const imageForRequest=selectedImage;
+            if(allSessions[currentSessionIndex].messages.length===1) allSessions[currentSessionIndex].title=userText||'Image chat';
+            appendMessageToUI(userText,'user',imageForRequest);
+            allSessions[currentSessionIndex].messages.push({role:'user',text:userText||'[Image attached]'});
             saveAllSessions();
-            inputField.value = '';
+            inputField.value='';
             removeAttachment();
             showTypingIndicator();
-
-            try {
-                const userData = JSON.parse(localStorage.getItem('entityUser') || '{}');
-                const userName = userData.name || userData.givenName || userData.email || '';
-                const response = await fetch('https://entity-303.onrender.com/api/chat', {
+            try{
+                const userData=JSON.parse(localStorage.getItem('entityUser')||'{}');
+                const userName=userData.name||userData.givenName||'';
+                const response=await fetch('https://entity-303.onrender.com/api/chat',{
                     method:'POST',
                     headers:{'Content-Type':'application/json'},
                     body:JSON.stringify({prompt:userText,userName,image:imageForRequest})
                 });
-                const data = await response.json();
-                const indicator = document.getElementById('typingIndicator');
-                if (indicator) indicator.remove();
-                if (!response.ok) throw new Error(data?.error || data?.details || 'Server error');
-                const aiReply = data.reply || 'No reply generated.';
+                const data=await response.json();
+                document.getElementById('typingIndicator')?.remove();
+                if(!response.ok) throw new Error(data?.error||data?.details||'Server error');
+                const aiReply=data.reply||'No reply generated.';
                 appendMessageToUI(aiReply,'bot');
                 allSessions[currentSessionIndex].messages.push({role:'bot',text:aiReply});
                 saveAllSessions();
                 speakAIResponse(aiReply);
-            } catch (error) {
+            }catch(error){
                 console.error('API Error:',error);
-                const indicator = document.getElementById('typingIndicator');
-                if (indicator) indicator.remove();
+                document.getElementById('typingIndicator')?.remove();
                 appendMessageToUI('Connection failed. Please try again.','bot');
             }
         }
@@ -1020,18 +876,11 @@
             if (event.key === 'Enter') sendMessage();
         }
 
-        async         async function logout() {
+                async function logout() {
             try {
-                if (window.Capacitor?.Plugins?.GoogleAuth) {
-                    await Capacitor.Plugins.GoogleAuth.initialize({
-                        clientId:'752902709629-n38560sohmn3b9tctf6cjg21sef3dnbe.apps.googleusercontent.com',
-                        scopes:['profile','email'],
-                        grantOfflineAccess:true
-                    });
-                    await Capacitor.Plugins.GoogleAuth.signOut();
-                }
-            } catch (error) {
-                console.log('Native sign out skipped:',error);
+                const googleSignIn=window.Capacitor?.Plugins?.GoogleSignIn;
+                const user=JSON.parse(localStorage.getItem('entityUser')||'{}');
+                if(googleSignIn&&!user.offline) { try{await googleSignIn.signOut();}catch(_){} }
             } finally {
                 localStorage.removeItem('entityUser');
                 window.location.replace('index.html');
