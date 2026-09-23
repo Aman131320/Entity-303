@@ -124,8 +124,10 @@
                 window.location.href = 'chat.html'; 
                 
             } catch (error) {
-                console.error(error);
-                alert("Login closed or failed: " + JSON.stringify(error));
+                console.error('Google sign-in error:',error);
+                const message=String(error?.message || error?.code || '').toLowerCase();
+                if (message.includes('cancel') || message.includes('dismiss') || message.includes('canceled')) return;
+                alert('Google sign-in failed. Please try again.');
             }
         }
     </script>
